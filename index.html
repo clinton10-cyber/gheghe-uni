@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#101b2c">
+  <meta name="description" content="Ghegeh University — a standalone 3D third-person campus life game by Clinton Tech.">
+  <title>Ghegeh University — Clinton Tech</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ghegeh Uni">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/game.css">
+  <script type="importmap">
+  {"imports":{"three":"./game-assets/vendor/three/three.module.min.js","three/addons/":"./game-assets/vendor/three/addons/"}}
+  </script>
+</head>
+<body>
+  <main id="game-root">
+    <noscript><div class="noscript">Ghegeh University needs JavaScript and WebGL. Please enable JavaScript to play.</div></noscript>
+    <canvas id="game-canvas" aria-label="Ghegeh University 3D campus"></canvas>
+    <section class="start-screen" id="start-screen">
+      <div class="start-glow"></div>
+      <div class="start-brand"><span class="start-logo">CT</span><div><small>CLINTON TECH PRESENTS</small><h1>GHEGEH <em>UNIVERSITY</em></h1><p>YOUR CAMPUS. YOUR CHOICES. YOUR STORY.</p></div></div>
+      <form class="start-card" id="profile-form">
+        <div class="start-kicker">CREATE YOUR STUDENT</div><h2>Every life begins with a choice.</h2><p class="start-intro">Build your character profile. Your answers will shape your university journey.</p>
+        <div class="profile-grid">
+          <label>CHARACTER NAME<input name="name" required maxlength="32" placeholder="Enter your name" autocomplete="name"></label>
+          <label>AGE<input name="age" required type="number" min="15" max="60" value="18"></label>
+          <label class="wide">LIFE AIM<select name="aim" required><option value="">Choose your ambition</option><option>Become successful in my career</option><option>Build a business</option><option>Become wealthy and independent</option><option>Make a difference in society</option><option>Become famous and influential</option><option>Enjoy university life and make memories</option><option>Discover my purpose</option></select></label>
+          <label class="wide">COURSE OF STUDY<input name="course" required maxlength="60" placeholder="e.g. Computer Science"></label>
+          <label>IQ SCORE <small>(50–200)</small><input name="iq" required type="number" min="50" max="200" value="100"></label>
+          <label>JAMB SCORE <small>(0–400)</small><input name="jamb" required type="number" min="0" max="400" placeholder="e.g. 211"></label>
+        </div>
+        <button class="start-button" type="submit">START MY GHEGEH UNIVERSITY LIFE <span>→</span></button>
+        <div class="start-foot">OFFLINE-FIRST · 3D CAMPUS SIMULATION · CLINTON TECH</div>
+      </form>
+      <div class="start-version">GHEGEH UNIVERSITY <span>·</span> A CLINTON TECH EXPERIENCE</div>
+    </section>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">UL</span><div><b>GHEGEH UNIVERSITY</b><small>A CLINTON TECH CAMPUS</small></div></div>
+      <div class="top-actions"><button id="life-btn">CAMPUS LIFE</button><button id="portal-btn">STUDENT PORTAL</button><label class="quality-control">QUALITY <select id="quality-select" aria-label="Graphics quality"><option value="low">LOW</option><option value="medium">MEDIUM</option><option value="high">HIGH</option></select></label><button id="pause-btn" aria-label="Pause">Ⅱ</button></div>
+    </header>
+    <section class="mission-card" id="mission-card">
+      <span class="eyebrow">YOUR CAMPUS DAY</span>
+      <b id="mission-title">Welcome to campus</b>
+      <small id="mission-copy">Explore the campus and meet your fellow students.</small>
+    </section>
+    <div class="status-strip" id="status-strip" aria-label="Student status">
+      <div class="chip"><small>ENERGY</small><b id="st-energy">–</b></div>
+      <div class="chip"><small>MOOD</small><b id="st-mood">–</b></div>
+      <div class="chip"><small>WALLET</small><b id="st-wallet">–</b></div>
+      <div class="chip"><small>REP</small><b id="st-rep">–</b></div>
+    </div>
+    <div class="suspension-banner hidden" id="suspension-banner" role="alert">DISCIPLINARY SUSPENSION · attend a student conduct meeting in Campus Life to return to class</div>
+    <div class="bottom-hint"><span class="dot"></span> <span id="hint-text">LEFT STICK: MOVE · DRAG RIGHT: LOOK · TAP ACTION BUTTON TO INTERACT</span></div>
+    <nav class="action-hud" aria-label="Character actions">
+      <button id="hud-style" title="Open wardrobe">STYLE</button>
+      <button id="hud-market" title="Clothing market">MARKET</button>
+      <button id="hud-emotes" title="Show emotes">EMOTES</button>
+      <button id="hud-handshake" title="Handshake with a nearby student">SHAKE</button>
+    </nav>
+    <section class="emote-panel hidden" id="emote-panel"><div class="emote-head"><b>EMOTES & GESTURES</b><button id="close-emotes">×</button></div>
+      <div class="emote-grid">
+        <button data-emote="wave">Wave</button><button data-emote="clap">Clap</button><button data-emote="flex">Flex</button><button data-emote="dance">Dance</button>
+        <button data-emote="azonto_step">Azonto</button><button data-emote="shaku_flow">Shaku</button><button data-emote="zanku_legwork">Zanku</button><button data-emote="stepper_glide">Steppers glide</button>
+        <button data-emote="stepper_cross">Cross step</button><button data-emote="stepper_heeltoe">Heel-toe</button><button data-emote="buga_bounce">Buga</button><button data-emote="amapiano_log">Amapiano</button>
+      </div><p>Handshake pairs with the nearest student. Dance moves play on your character.</p>
+    </section>
+    <section class="market-panel hidden" id="market-panel"><div class="market-head"><div><small>GHEGEH CAMPUS STYLE</small><h2>Student Clothing Market</h2><p>Buy an outfit, then visit the fitting studio to change in third person.</p></div><button id="close-market">×</button></div>
+      <div class="market-wallet" id="market-wallet">Wallet: ₦45,000</div><div class="market-items" id="market-items"></div>
+      <div class="market-foot"><span>Purchased items are saved on this device.</span><button id="market-done">DONE</button></div>
+    </section>
+    <section class="portal hidden" id="portal">
+      <div class="portal-head"><div><span class="eyebrow">STUDENT SERVICES</span><h1>Student Portal</h1></div><button class="close" id="close-portal">×</button></div>
+      <div class="profile-badge" id="profile-summary"></div><div class="student-summary"><div><small>PROGRAMME</small><b id="programme-name">Not enrolled</b></div><div><small>CGPA</small><b id="cgpa">0.00</b></div><div><small>CREDITS</small><b id="credits">0 / 12</b></div></div>
+      <div id="enrolment" class="portal-section"><h2>Choose your programme</h2><div class="programme-grid" id="programme-list"></div></div>
+      <div id="student-actions" class="portal-section hidden"><h2>Academic activities</h2><div class="activity-grid">
+        <button data-action="study"><b>📚 Study session</b><small>Done in person at the library</small></button>
+        <button data-action="lecture"><b>🎓 Attend lecture</b><small>Done in person at a faculty</small></button>
+        <button data-action="exam"><b>📝 Take examination</b><small>Needs 2 study + 1 lecture · pass mark 50%</small></button>
+        <button data-action="scholarship"><b>🏅 Apply scholarship</b><small>2 passes · 5 study · 60% average · ₦50,000</small></button>
+      </div><div class="progress-wrap"><div class="progress-label"><span>Graduation progress</span><b id="progress-label">0%</b></div><div class="progress"><i id="progress-bar"></i></div></div><button class="graduate" id="graduate-btn" disabled>GRADUATE</button></div>
+      <div class="portal-section"><h2>Campus objectives</h2><ul class="objectives" id="objectives"></ul></div>
+      <p class="save-note">Progress is saved locally on this device. No account or online payment is required in this starter build.</p>
+      <button class="reset-btn" id="reset-btn" type="button">START A NEW STUDENT (ERASE SAVE)</button>
+    </section>
+
+    <section class="life-panel hidden" id="life-panel">
+      <div class="life-head"><div><span class="eyebrow">YOUR CHOICES · YOUR STORY</span><h2>Campus Life</h2></div><button class="close" id="close-life">×</button></div>
+      <div class="life-stats" id="life-stats"></div>
+      <div class="life-section" id="npc-social" hidden>
+        <h3 id="npc-name">Meet a student</h3><p id="npc-copy">Build friendships through repeated conversations and shared activities.</p>
+        <div class="conversation-log" id="conversation-log" aria-live="polite"></div>
+        <div class="conversation-topics" id="conversation-topics"></div>
+        <form class="chat-compose" id="chat-form"><input id="chat-input" maxlength="180" autocomplete="off" placeholder="Say something to this student…"><button type="submit">SEND</button></form>
+        <div class="life-actions"><button data-social="chat">START A NEW CHAT</button><button data-social="study">INVITE TO STUDY</button><button data-social="bestie">ASK TO BE BESTIES</button></div>
+      </div>
+      <div class="life-section"><h3>Choose your circle</h3><p>Campus groups change your reputation, opportunities and the choices you face.</p><div class="faction-grid" id="faction-list"></div><button class="subtle-action" id="leave-faction">LEAVE CURRENT GROUP</button></div>
+      <div class="life-section"><h3>What do you want to do?</h3><div class="life-actions">
+        <button data-life="hangout">HANG OUT WITH FRIENDS</button><button data-life="party">GO TO A CAMPUS PARTY</button><button data-life="work">TAKE A STUDENT JOB</button><button data-life="sports">TRAIN WITH SPORTS CLUB</button><button data-life="discipline">STUDENT CONDUCT MEETING</button>
+      </div></div>
+      <p class="life-foot">Your choices are saved on this device. Secret-group membership is fictional and can carry in-game disciplinary consequences.</p>
+    </section>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="loading" id="loading" role="status" aria-live="polite"><div class="loader" id="loader"></div><b id="loading-title">BUILDING YOUR CAMPUS</b><small id="loading-copy">Preparing Ghegeh University…</small><div class="loading-actions hidden" id="loading-actions"><button id="reload-btn" type="button">RELOAD</button></div></div>
+  </main>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
