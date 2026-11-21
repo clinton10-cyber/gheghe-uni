@@ -151,7 +151,7 @@ export const StudentProfile = {
   get(){ return profileLoad(); },
   save(data){
     const c=(v,a,b,d)=>Number.isFinite(Number(v))&&String(v).trim()!==""?Math.round(Math.max(a,Math.min(b,Number(v)))):d;
-    const p={name:String(data.name||"").replace(/\s+/g," ").trim().slice(0,32)||"Student",age:c(data.age,15,60,18),aim:String(data.aim||"").slice(0,80),course:String(data.course||"").replace(/\s+/g," ").trim().slice(0,60),iq:c(data.iq,50,200,100),jamb:c(data.jamb,0,400,0),createdAt:Date.now()};
+    const p={name:String(data.name||"").replace(/\s+/g," ").trim().slice(0,32)||"Student",age:c(data.age,15,60,18),aim:String(data.aim||"").slice(0,80),programme:String(data.programme||"").slice(0,40),course:String(data.course||"").replace(/\s+/g," ").trim().slice(0,60),iq:c(data.iq,50,200,100),jamb:c(data.jamb,0,400,0),createdAt:Date.now()};
     profileSave(p);return p;
   },
   clear(){try{localStorage.removeItem(PROFILE_KEY);}catch{}}

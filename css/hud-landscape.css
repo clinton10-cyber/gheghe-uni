@@ -1,0 +1,234 @@
+/* ════════════════════════════════════════════════════════════════
+   HUD · LANDSCAPE · "console" layout (loaded after hud.css)
+
+   Fixed lanes, so nothing can sit on top of anything else:
+
+     ┌────────────────────────────────────────────────────────────┐
+     │ ┌card────────┐          · banner ·       [★★★]  [bag][₦ $]  │
+     │ └────────────┘                                              │
+     │ [⌂ │ ≡ │ ♪ │ ⚙]                                            │
+     │                                              [chip][chip][chip]
+     │                                              [chip][chip][chip]
+     │ (  joystick  ) │ items │                     [dock][ jump ]  │
+     │                │ ammo  │                                     │
+     │                │ state │                                     │
+     └────────────────────────────────────────────────────────────┘
+      LEFT LANE         CENTRE LANE                   RIGHT LANE
+
+   • left lane   : player card + system capsule (top), joystick (bottom)
+   • centre lane : top = banner/toasts, bottom = state · ammo · held items
+                   (three fixed slots stacked upward, never share a row)
+   • right lane  : money/bag (top), action chips in a 3-wide block that
+                   grows UP from the thumb buttons, jump + dock (bottom)
+   ════════════════════════════════════════════════════════════════ */
+@media (orientation:landscape){
+  :root{
+    --h-top:calc(env(safe-area-inset-top,0px) + 8px);
+    --h-left:calc(env(safe-area-inset-left,0px) + 14px);
+    --h-right:calc(env(safe-area-inset-right,0px) + 14px);
+    --h-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    --h-banner-top:calc(env(safe-area-inset-top,0px) + 8px);
+    --row-h:54px;
+    --chip-w:104px;
+    --chip-h:32px;
+    --joy:150px;
+    --ctx-cols:3;
+    --lane-l:calc(var(--h-left) + var(--joy) + 10px);          /* centre lane starts after the joystick */
+    --stack-bottom:calc(var(--h-bottom) + var(--row-h) + 10px);
+    --dk-gap:calc(var(--h-bottom) + 4px);
+  }
+
+  /* ── LEFT LANE · top: player card, then the system capsule under it ── */
+  #hud-tl{flex-direction:column!important;align-items:flex-start!important;gap:6px!important;max-width:none!important}
+  #player-panel{padding:4px 12px 4px 4px!important;border-radius:14px!important;gap:8px!important}
+  #pp-face{width:34px!important;height:34px!important;border-radius:10px!important}
+  .pp-name{font-size:12px!important;max-width:84px!important}
+  .pp-info{gap:4px!important}
+  .pp-hp-bar{min-width:60px!important;height:5px!important}
+  .pp-stats,.pp-meters{display:none!important}
+  #hud-rail{order:2;display:inline-flex!important;flex-wrap:nowrap!important;gap:0!important;padding:3px!important;
+    border-radius:14px;background:var(--h-glass);border:1px solid var(--h-line);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 6px 18px rgba(0,0,0,.32)}
+  .h-rail{min-width:34px!important;height:30px!important;line-height:30px!important;border-radius:10px!important;
+    background:transparent!important;border:0!important;box-shadow:none!important}
+  .h-rail:not(.h-labelled){width:34px!important}
+  .h-rail::before{width:16px!important;height:16px!important}
+  .h-rail.h-labelled{padding:0 10px 0 8px!important;font-size:11.5px!important}
+  .h-rail+.h-rail{box-shadow:inset 1px 0 0 var(--h-line)!important}
+
+  /* ── RIGHT LANE · top: wallet + bag in one row, stars underneath ── */
+  #hud-tr{flex-direction:row-reverse!important;align-items:center!important;gap:6px!important}
+  .h-chip,.h-wallet,#ph3d-pocket-btn{height:30px!important;border-radius:10px!important}
+  .tpill.h-wallet .tamt{font-size:14px!important;font-weight:900!important}
+  #ph3d-wanted{top:calc(env(safe-area-inset-top,0px) + 44px)!important;right:var(--h-right)!important}
+
+  /* ── CENTRE LANE · top: banner + toasts (kept narrow, between the two corners) ── */
+  #drive-hud,#ph3d-wave,#ph3d-prison-hud,#pc-combo{padding:5px 12px!important;font-size:12px!important;max-width:min(34vw,300px)!important}
+  .ttoast{top:calc(env(safe-area-inset-top,0px) + 44px)!important;padding:7px 12px!important;font-size:12px!important;max-width:min(34vw,300px)!important}
+
+  /* ── CENTRE LANE · mission / job cards sit BELOW the banner + toast slots and under the HUD layer ── */
+  #ph3d-obj-card{top:calc(env(safe-area-inset-top,0px) + 84px)!important;z-index:25!important;max-width:34vw!important}
+  #ph3d-obj-card{min-width:210px!important;padding:6px 12px!important}
+
+  /* ── CENTRE LANE · bottom: three fixed slots stacked upward ── */
+  #hud-bl{left:var(--lane-l)!important;bottom:var(--h-bottom)!important;max-width:calc(100vw - var(--lane-l) - var(--h-right) - var(--chip-w)*var(--ctx-cols) - 24px)!important}
+  #ph3d-gun-hud{left:var(--lane-l)!important;right:auto!important;bottom:calc(var(--h-bottom) + 32px)!important;padding:5px 10px!important}
+  #ph3d-gun-ammo{font-size:17px!important}
+  #hud-item{left:var(--lane-l)!important;right:auto!important;bottom:calc(var(--h-bottom) + 82px)!important;transform:none!important;
+    flex-direction:column!important;align-items:flex-start!important;gap:6px!important}
+
+  /* ── RIGHT LANE · action chips: a 3-wide block growing UP from the thumb buttons ── */
+  #hud-ctx{left:auto!important;right:var(--h-right)!important;bottom:var(--stack-bottom)!important;
+    width:calc(var(--chip-w)*var(--ctx-cols) + (var(--ctx-cols) - 1)*6px)!important;max-width:none!important;max-height:none!important;
+    flex-direction:row-reverse!important;flex-wrap:wrap-reverse!important;justify-content:flex-start!important;
+    align-items:flex-end!important;align-content:flex-start!important;gap:6px!important}
+  .h-ctx{width:var(--chip-w)!important;height:var(--chip-h)!important;min-height:0!important;line-height:var(--chip-h)!important;
+    padding:0 8px!important;font-size:11.5px!important;border-radius:10px!important;
+    white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-align:left}
+  .h-ctx.h-lead::before{margin-right:.4em!important}
+
+  /* ── RIGHT LANE · bottom: jump + dock, same spots every scene ── */
+  #hud-pad{width:var(--row-h)!important;height:var(--row-h)!important;right:var(--h-right)!important;bottom:var(--h-bottom)!important}
+  .h-jump{width:var(--row-h)!important;height:var(--row-h)!important}
+  .h-fire{width:62px!important;height:62px!important;right:calc(var(--row-h) + 64px)!important;bottom:-4px!important}
+  .h-reload{width:46px!important;height:46px!important;right:calc(var(--row-h) + 134px)!important;bottom:4px!important}
+  #hud-dockbtn{width:44px!important;height:44px!important;right:calc(var(--h-right) + var(--row-h) + 10px)!important;bottom:calc(var(--h-bottom) + 5px)!important}
+  #hud-dock{right:calc(var(--h-right) + var(--row-h) + 64px)!important;bottom:var(--h-bottom)!important;width:236px!important;
+    max-height:calc(100vh - var(--h-top) - var(--h-bottom) - 12px)!important;overflow-y:auto!important;z-index:5}
+
+  /* driving: pedals left, steering right, both inside the thumb zones */
+  #dr-left-container,#dr-right-container{padding:4px!important}
+  #dr-left-container .dr-btn,#dr-right-container .dr-btn{width:56px!important;height:52px!important}
+  #drive-enter{bottom:calc(var(--h-bottom) + 70px)!important}
+
+  /* menus: centred cards instead of full-width bottom sheets */
+  .h-scrim{align-items:center!important}
+  .h-sheet{width:min(560px,78vw)!important;max-height:calc(100vh - 24px)!important;border-radius:22px!important;
+    padding-bottom:14px!important;border-bottom:1px solid var(--h-line-hi)!important}
+  .h-sec{margin-top:10px!important}
+  .h-grid.c3,.h-grid.c4,.h-grid.c5{grid-template-columns:repeat(5,1fr)!important;gap:7px!important}
+  .h-grid>*{min-height:0!important;padding-top:7px!important;padding-bottom:7px!important}
+  .h-title{font-size:17px!important}
+
+  /* phone: a tall panel on the right, scrolls inside, so it never covers the HUD it doesn't need to */
+  .tphone{left:auto!important;right:calc(env(safe-area-inset-right,0px) + 10px)!important;
+    width:min(340px,44vw)!important;max-width:none!important;
+    height:calc(100vh - env(safe-area-inset-top,0px) - 6px)!important;
+    transform:translateY(105%)!important;border-radius:26px 26px 0 0!important}
+  .tphone.on{transform:none!important}
+  .tphone .tnotch{margin:6px auto 2px!important;height:24px!important;width:96px!important}
+}
+
+/* wider phones / tablets: a 4-wide chip block keeps it shorter */
+@media (orientation:landscape) and (min-width:800px){ :root{--ctx-cols:4} }
+
+/* very short landscape screens (small phones): slightly smaller chips, same lanes */
+@media (orientation:landscape) and (max-height:380px){
+  :root{--row-h:50px;--chip-w:100px;--chip-h:30px;--joy:140px}
+  .h-ctx{font-size:11px!important}
+  .pp-hp-num{display:none}
+}
+
+/* ── login card: logo left, form right, always fits a short screen ── */
+@media (orientation:landscape){
+  #ph3d-auth{align-items:flex-start!important;padding:calc(env(safe-area-inset-top,0px) + 8px) 16px 8px!important}
+  #ph3d-auth .au-card{width:min(88vw,660px)!important;margin:auto!important;display:flex!important;flex-direction:row!important;
+    align-items:center;gap:22px;padding:14px 22px!important;text-align:left!important}
+  #ph3d-auth .au-l{display:flex!important;flex-direction:column;align-items:center;flex:0 0 190px;text-align:center}
+  #ph3d-auth .au-r{display:block!important;flex:1;min-width:0}
+  #ph3d-auth .au-logo{width:72px!important;height:72px!important}
+  #ph3d-auth .au-title{font-size:20px!important}
+  #ph3d-auth .au-sub{margin-top:8px!important}
+  #ph3d-auth .au-lbl{margin:0 2px 6px!important}
+  #ph3d-auth .au-input{height:42px!important;font-size:15px!important}
+  #ph3d-auth .au-btn{height:44px!important;margin-top:8px!important}
+  #ph3d-auth .au-chips{margin-top:10px!important}
+  #ph3d-auth .au-credit{margin-top:8px!important;font-size:10px!important}
+}
+
+/* ── portrait fallback (desktop / PWA): ask for landscape ── */
+#rotate-hint{display:none}
+@media (orientation:portrait){
+  #rotate-hint{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    background:radial-gradient(circle at 50% 45%,#10201a 0%,#050907 75%);color:#f3f1e8;
+    font:800 15px/1.3 var(--h-font,system-ui,sans-serif);letter-spacing:.14em;text-align:center;padding:24px}
+  #rotate-hint i{display:block;width:64px;height:100px;border:4px solid #ff9c1a;border-radius:14px;position:relative;
+    animation:rhTurn 2.4s ease-in-out infinite}
+  #rotate-hint i::after{content:"";position:absolute;left:50%;bottom:7px;width:14px;height:4px;margin-left:-7px;border-radius:2px;background:#ff9c1a}
+  @keyframes rhTurn{0%,25%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+}
+
+/* ══════════════════════════════════════════════════════
+   LAPTOP / DESKTOP — phone shows as a centred handset frame.
+   Mouse + large screen only; touch phones and tablets keep their layout.
+   Loaded after phone.css so it overrides the landscape side panel and the
+   full-width immersive mode, which stretched app content across the screen.
+   ══════════════════════════════════════════════════════ */
+@media (min-width:760px) and (min-height:560px) and (pointer:fine){
+  .tphone,
+  .tphone.app-immersive{
+    --ph-w:min(420px,calc(100vw - 24px));
+    left:calc(50% - var(--ph-w) / 2)!important;right:auto!important;
+    bottom:12px!important;
+    width:var(--ph-w)!important;max-width:none!important;
+    height:min(calc(100dvh - 24px),880px)!important;max-height:none!important;
+    border-radius:38px!important;
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 30px 90px rgba(0,0,0,.75),0 0 0 6px #05070b,0 0 0 7px rgba(255,255,255,.08)!important;
+    transform:translateY(112%)!important;
+  }
+  .tphone.on,
+  .tphone.app-immersive.on{transform:none!important}
+  .tphone .tnotch{margin:8px auto 4px!important;width:110px!important;height:26px!important}
+  .tphone.app-immersive .tapp{
+    padding-left:16px!important;padding-right:16px!important;
+    border-radius:0 0 38px 38px;
+  }
+  .tphone.app-immersive .tbk{
+    margin:0 -16px 10px!important;width:calc(100% + 32px)!important;
+    padding:13px 17px!important;
+  }
+  .tphone.app-immersive #app-home{padding:18px 16px 30px!important}
+  .tphone.app-immersive #app-games{padding:0!important}
+  .tphone.app-immersive .gm-runner-root{min-height:0}
+  .tphone.app-immersive #gm-runner-stage{height:min(62dvh,560px);min-height:360px}
+  .tphone.app-immersive .gm-cv{height:min(60dvh,540px)}
+}
+
+
+/* ════════════ COMBAT HUD (gun drawn) — CoD-style: clear centre, small corner clusters ════════════
+   Life-sim chips (Jetpack, Lie, Actions, Go Outside...) hide while a gun is out, the remaining
+   combat chips shrink to a slim 2x2 block above the thumb buttons, and the torch / talk
+   buttons get their own slots under the wallet instead of sitting on the chips. */
+@media (orientation:landscape){
+  #ph3d-torch-btn{top:calc(env(safe-area-inset-top,0px) + 84px)!important;right:var(--h-right)!important;padding:0 10px!important;height:28px!important;
+    border-radius:10px!important;font-size:10px!important;z-index:31}
+  #ph3d-npc-actions{top:calc(env(safe-area-inset-top,0px) + 46px)!important;right:var(--h-right)!important;max-width:min(40vw,300px)!important}
+  body.gun-out #hud-ctx{display:grid!important;grid-template-columns:repeat(2,96px)!important;width:auto!important;gap:5px!important;
+    bottom:calc(var(--h-bottom) + var(--row-h) + 14px)!important;right:var(--h-right)!important}
+  body.gun-out #hud-ctx .h-ctx:not(.h-combat-util):not(#ph3d-crouch-btn):not(#ph3d-act-btn):not(.is-live){display:none!important}
+  body.gun-out #hud-ctx .h-ctx{width:96px!important;height:30px!important;min-height:0!important;line-height:30px!important;padding:0 6px!important;
+    font-size:10px!important;border-radius:10px!important;text-align:center!important;background:rgba(9,14,20,.78)!important}
+  body.gun-out #hud-ctx .h-ctx::before{display:none!important}
+  body.gun-out #hud-item{display:none!important}
+  body.gun-out #ph3d-gun-hud{left:auto!important;right:calc(var(--h-right) + 96px)!important;bottom:calc(var(--h-bottom) + 6px)!important}
+  body.gun-out #ph3d-gun-ammo{font-size:22px!important}
+}
+
+/* FIRE: with a gun drawn the context "Fire" chip becomes a big round thumb button beside Jump */
+@media (orientation:landscape){
+  body.gun-out #hud-ctx #ph3d-act-btn{position:fixed!important;right:calc(var(--h-right) + var(--row-h) + 64px)!important;bottom:calc(var(--h-bottom) - 2px)!important;
+    width:66px!important;height:66px!important;min-height:0!important;line-height:66px!important;padding:0!important;border-radius:50%!important;
+    text-align:center!important;font-size:12px!important;font-weight:900!important;letter-spacing:.08em!important;z-index:80!important;
+    background:rgba(190,32,24,.92)!important;border:2px solid rgba(255,160,140,.85)!important;color:#fff!important;box-shadow:0 8px 22px rgba(0,0,0,.45),0 0 18px rgba(255,70,50,.35)!important}
+  body.gun-out #hud-ctx #ph3d-act-btn:active{transform:scale(.93);background:#ff3b2a!important}
+}
+
+body.rg-active #hud-bl{display:none!important}   /* range: the weapon slots already show what you hold */
+
+/* city: Drive / Walk chips are always shown, a touch bigger than the other chips */
+@media (orientation:landscape){
+  #hud-ctx .h-city{width:96px!important;height:38px!important;line-height:38px!important;font-size:12px!important;font-weight:800!important;
+    background:rgba(255,198,43,.95)!important;color:#241800!important;border-color:transparent!important}
+  #hud-ctx #ph3d-city-walk{background:rgba(9,14,20,.88)!important;color:#f4f6f8!important;border:1px solid rgba(255,255,255,.3)!important}
+}

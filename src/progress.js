@@ -23,8 +23,8 @@ const PROGRAMMES = [
   { id:"computer-science", name:"Computer Science", faculty:"Science & Technology", minJamb:200, courses:["Programming Fundamentals","Mathematics I","Computer Systems","Communication Skills"] },
   { id:"medicine", name:"Medicine & Surgery", faculty:"Health Sciences", minJamb:280, courses:["Human Anatomy","Biochemistry","Physiology","Medical Ethics"] },
   { id:"law", name:"Law", faculty:"Faculty of Law", minJamb:250, courses:["Nigerian Legal System","Constitutional Law","Contract Law","Legal Methods"] },
-  { id:"business", name:"Business Administration", faculty:"Management Sciences", minJamb:180, courses:["Principles of Management","Accounting","Economics","Business Communication"] },
-  { id:"mass-communication", name:"Mass Communication", faculty:"Communication & Media Studies", minJamb:200, courses:["News Writing","Broadcasting","Media Studies","Public Relations"] }
+  { id:"business", name:"Business Administration", faculty:"Management Sciences", minJamb:150, courses:["Principles of Management","Accounting","Economics","Business Communication"] },
+  { id:"mass-communication", name:"Mass Communication", faculty:"Communication & Media Studies", minJamb:170, courses:["News Writing","Broadcasting","Media Studies","Public Relations"] }
 ];
 
 const num = (v, min, max, fallback = 0) => {

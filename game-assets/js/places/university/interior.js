@@ -1322,6 +1322,7 @@ export async function buildInterior(router) {
     three: scene,
     camera,
     controls: ctl,
+    world,
     openWardrobe: () => openWardrobeFor(ctl),
     equipClothing: (look) => { for(const [key,value] of Object.entries(look||{})) Wardrobe.set(key,value); try{ if(ctl._wardrobeUI) ctl._wardrobeUI.apply(Wardrobe.config,null); else openWardrobeFor(ctl); }catch{} },
     playEmote: (name) => ctl.playEmote(name),

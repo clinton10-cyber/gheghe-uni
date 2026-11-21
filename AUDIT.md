@@ -49,3 +49,13 @@ Compared against `clinton10-cyber/Everyday-game` (read only, not modified).
 
 ## Not changed
 Everyday-game was only read. The 3D campus, NPC, vehicle and character code under `game-assets/` is untouched except the one `equipClothing` fix.
+
+## v8 additions (UI rebuild)
+
+- **Splash:** the real Clinton Tech intro from Everyday in PH (animated hexagon logo, "CLINTON TECH / PRESENTS", progress bar tied to the campus build) now plays first, then the game title.
+- **Run and jump were missing:** the controller creates RUN and JUMP but relies on Everyday-game's `hud.css`, which the university never had. Copied `hud.css`, `hud-icons.css`, `hud-landscape.css`, fonts. JUMP, action button, Moves dock and menu now render. RUN also has a permanent toggle in the right-hand column.
+- **Look and feel:** player card, glass sheets, taxi-yellow accent and Archivo type now match Everyday-game. Old `game.css` removed.
+- **Registration:** replaced the long "life aim / IQ" form with four plain fields (name, age, JAMB score, course). The course list greys out courses your JAMB score cannot reach, and admission is applied automatically.
+- **UX:** "Next step" guide card with a direction arrow and distance to the right building; numbered Student Portal checklist; labelled button column; one-time How to play sheet.
+- **Wrong findings fixed:** weapons list, fight moves, jetpack and gear shop were reachable from the controller menu in a campus game; removed. Everyday-only bag, sound, settings and back-to-city buttons hidden. Our sheets were drawn underneath the Everyday HUD because of a stacking-context bug; fixed.
+- JAMB cut-offs lowered for Business (150) and Mass Communication (170) so every valid score can enter some course.
