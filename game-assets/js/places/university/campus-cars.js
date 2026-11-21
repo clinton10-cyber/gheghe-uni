@@ -24,6 +24,39 @@ const MODELS = [
 ];
 const ROT = { "+x": -Math.PI / 2, "+z": 0, "-z": Math.PI, "-x": Math.PI / 2 };
 
+
+/* A hinged driver's-door panel fitted to a car that has none. The outermost body surface is found
+   by ray-casting from the side, so the panel sits on the bodywork instead of floating or sinking. */
+function fitDriverDoor(group, color) {
+  group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(group);
+  const L = box.max.z - box.min.z, H = box.max.y - box.min.y;
+  const zFront = box.min.z + L * 0.60, zBack = box.min.z + L * 0.30;       // door spans 30% of the length, just ahead of centre
+  const yBot = box.min.y + H * 0.26, yTop = box.min.y + H * 0.80, ray = new THREE.Raycaster();
+  let surf = -Infinity;
+  for (let z = zBack; z <= zFront + 1e-6; z += (zFront - zBack) / 4) {
+    for (const y of [yBot + 0.05, (yBot + yTop) / 2, yTop - 0.05]) {
+      ray.set(new THREE.Vector3(box.max.x + 1, y, z), new THREE.Vector3(-1, 0, 0)); ray.far = 8;
+      const hit = ray.intersectObject(group, true).find(h => h.object.isMesh);
+      if (hit) surf = Math.max(surf, hit.point.x);
+    }
+  }
+  if (!Number.isFinite(surf)) surf = (box.max.x + box.min.x) / 2 + (box.max.x - box.min.x) * 0.4;
+  const len = zFront - zBack, bodyH = (yTop - yBot) * 0.55;
+  const pivot = new THREE.Group(); pivot.position.set(surf + 0.015, yBot, zFront);
+  const paint = new THREE.Mesh(new THREE.BoxGeometry(0.05, bodyH, len), new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.3 }));
+  paint.position.set(0, bodyH / 2, -len / 2);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(0.035, (yTop - yBot) - bodyH, len * 0.92),
+    new THREE.MeshStandardMaterial({ color: 0x23343f, metalness: 0.4, roughness: 0.12, transparent: true, opacity: 0.78 }));
+  glass.position.set(-0.005, bodyH + ((yTop - yBot) - bodyH) / 2, -len / 2);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.22), new THREE.MeshStandardMaterial({ color: 0xcfd6dc, metalness: 0.9, roughness: 0.2 }));
+  handle.position.set(0.04, bodyH * 0.8, -len * 0.7);
+  pivot.add(paint, glass, handle);
+  pivot.userData.isFront = true; pivot.userData.sign = 1;
+  group.add(pivot);
+  return pivot;
+}
+
 export function makeCar(modelIndex, colorIndex) {
   const def = MODELS[modelIndex % MODELS.length];
   const model = def.build(def.colors[colorIndex % def.colors.length]);
@@ -37,7 +70,8 @@ export function makeCar(modelIndex, colorIndex) {
   scl.position.set(-(b.min.x + b.max.x) / 2, -b.min.y + 0.02, -(b.min.z + b.max.z) / 2);   // centred, wheels on the ground
   const group = new THREE.Group(); group.add(scl);
   group.userData.size = { w: b.max.x - b.min.x, l: b.max.z - b.min.z };
-  group.userData.doors = model.userData && model.userData.doors ? model.userData.doors : null;   // only the Range Rover ships real hinged doors
+  if (model.userData && model.userData.doors) group.userData.doors = model.userData.doors;        // the Range Rover ships real hinged doors
+  else group.userData.doors = [fitDriverDoor(group, def.colors[colorIndex % def.colors.length])];   // everyone else gets a fitted one
   return group;
 }
 
