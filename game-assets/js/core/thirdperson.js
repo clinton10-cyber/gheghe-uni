@@ -576,6 +576,8 @@ export class ThirdPersonControls {
   _bind() {
     const el = this.dom;
     this._kd = e => {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return; /* typing in a form must not trigger game keys */
       this.keys[e.code] = true;
       if (e.code === "KeyE") this.triggerAction();
       if (e.code === "KeyQ") {

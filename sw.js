@@ -4,7 +4,7 @@
 // - Everything else same-origin (3D vendor, models, icons): stale-while-revalidate.
 // - The index.html fallback is for page navigations only. The old worker returned HTML for failed
 //   .js requests, which broke ES modules offline.
-const VERSION = "v8";
+const VERSION = "v9";
 const CACHE = `ghegeh-university-${VERSION}`;
 const CORE = ["./", "./index.html", "./css/fonts.css", "./css/hud-icons.css", "./css/hud.css", "./css/hud-landscape.css", "./css/uni.css", "./assets/fonts/archivo-latin-wdth.woff2", "./src/main.js", "./src/life.js", "./src/progress.js", "./src/quality.js", "./manifest.webmanifest", "./icons/icon-192.png", "./game-assets/vendor/three/three.module.min.js"];
 

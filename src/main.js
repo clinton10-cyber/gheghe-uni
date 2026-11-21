@@ -54,14 +54,19 @@ function toast(message) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
 }
 
+window.__ph3d_phone = window.__ph3d_phone || { _toast: m => toast(m) };
+const setText = (el, v) => { if (el && el.textContent !== v) el.textContent = v; };
+
 /* ---------- sheets ---------- */
-const PANELS = ["portal", "life", "market", "emotes", "settings", "howto"];
+const PANELS = ["portal", "life", "market", "emotes", "settings", "howto", "dialog"];
 const sheetEl = id => $("sheet-" + id);
 const isOpen = id => !sheetEl(id).classList.contains("hidden") && sheetEl(id).classList.contains("on");
 const anyOpen = () => PANELS.some(isOpen);
 const modalOpen = () => anyOpen() || !$("register").classList.contains("hidden");
 const closeTimers = {};
+let lastFocus = null;
 function openPanel(id) {
+  if (!document.body.classList.contains("sheet-open")) lastFocus = document.activeElement;
   closeAll(id);
   const el = sheetEl(id); clearTimeout(closeTimers[id]);
   if (id === "portal") renderPortal();
@@ -70,13 +75,29 @@ function openPanel(id) {
   if (id === "settings") renderSettings();
   el.classList.remove("hidden"); void el.offsetWidth; el.classList.add("on");
   document.body.classList.add("sheet-open");
+  setTimeout(() => { const f = el.querySelector("[data-autofocus]") || el.querySelector(".h-sheet"); try { f && f.focus({ preventScroll: true }); } catch {} }, 60);
 }
 function closePanel(id) {
   const el = sheetEl(id); el.classList.remove("on");
-  closeTimers[id] = setTimeout(() => { el.classList.add("hidden"); if (!PANELS.some(p => !sheetEl(p).classList.contains("hidden"))) document.body.classList.remove("sheet-open"); }, 230);
+  closeTimers[id] = setTimeout(() => { el.classList.add("hidden"); if (!PANELS.some(p => !sheetEl(p).classList.contains("hidden"))) { document.body.classList.remove("sheet-open"); try { if (lastFocus && document.contains(lastFocus) && lastFocus !== document.body) lastFocus.focus({ preventScroll: true }); } catch {} } }, 230);
   if (id === "life") activeNpc = null;
 }
 function closeAll(except) { PANELS.forEach(p => { if (p !== except && !sheetEl(p).classList.contains("hidden")) closePanel(p); }); }
+
+/* ---------- in-game dialog (replaces window.confirm and short-lived result toasts) ---------- */
+function showDialog({ title, big = "", text = "", tone = "", actions = [] }) {
+  setText($("dialog-title"), title); const b = $("dialog-big"); b.textContent = big; b.className = "dlg-big " + tone;
+  setText($("dialog-text"), text);
+  const box = $("dialog-actions"); box.innerHTML = "";
+  actions.forEach(a => {
+    const btn = document.createElement("button"); btn.type = "button";
+    btn.className = a.primary ? "btn-primary" + (a.danger ? " danger" : "") : "btn-ghost"; btn.textContent = a.label;
+    if (a.primary) btn.dataset.autofocus = "";
+    btn.addEventListener("click", () => { closePanel("dialog"); if (a.fn) a.fn(); });
+    box.appendChild(btn);
+  });
+  openPanel("dialog");
+}
 
 /* ---------- player card ---------- */
 let faceName = null;
@@ -96,8 +117,10 @@ function renderStatus() {
   $("pp-name").textContent = P?.name || "Student";
   $("pp-level").textContent = S.programme ? (SHORT[S.programme.id] || "STUDENT") : "NEW";
   $("pp-cash").textContent = money(L.wallet);
-  setMeter("en", L.energy); setMeter("mood", L.mood); setMeter("rep", L.reputation);
+  setMeter("en", L.energy); setMeter("mood", L.mood); setMeter("rep", L.reputation); setMeter("disc", L.discipline);
   document.querySelector(".pp-m-en").classList.toggle("low", L.energy <= 20);
+  document.querySelector(".pp-m-mood").classList.toggle("low", L.mood <= 20);
+  document.querySelector(".pp-m-disc").classList.toggle("low", L.discipline <= 35);
   $("suspension-banner").classList.toggle("hidden", !(started && L.suspended));
   drawFace(P?.name);
   updateGuide();
@@ -112,7 +135,7 @@ const nearest = (ids) => {
 };
 function currentStep() {
   const S = CampusProgress.snapshot(), L = CampusLife.snapshot();
-  if (L.suspended) return { title: "Attend a conduct meeting", sub: "Open People, then Student conduct meeting", open: "life" };
+  if (L.suspended) return { title: "Attend a conduct meeting", sub: "Open People, then Conduct meeting", open: "life" };
   if (L.energy <= 15) return L.wallet >= 350
     ? { title: "You are tired. Get a meal", sub: "Cafeteria in the Student Union", ids: ["cafeteria"] }
     : { title: "You are tired. Rest", sub: "Student hostels", ids: ["hostel"] };
@@ -123,28 +146,29 @@ function currentStep() {
   return { title: "Take your exam", sub: "Tap here to open your Student Portal", open: "portal" };
 }
 let guideStep = null;
+let lastAnnounced = "";
 function updateGuide() {
   const g = $("guide");
   if (!started) { g.classList.add("hidden"); return; }
   g.classList.remove("hidden");
   const step = currentStep(); guideStep = step;
-  $("guide-title").textContent = step.title; 
-  const arrow = $("guide-arrow"), dist = $("guide-dist");
+  setText($("guide-title"), step.title);
+  const arrow = $("guide-arrow");
   const found = step.ids ? nearest(step.ids) : null;
+  let label = "NEXT STEP", sub = step.sub;
   if (found && campus?.camera) {
     const d = Math.round(found.dist);
     const here = found.dist <= (found.use.r || 3) + 1;
-    $("guide-sub").textContent = here ? "You are here. Press the action button." : step.sub;
-    dist.textContent = here ? "" : `${d} m`;
+    if (here) sub = "You are here. Press the action button."; else label = `NEXT STEP · ${d} m`;
     arrow.classList.toggle("none", here);
     if (!here) {
       const v = new THREE.Vector3(found.use.x, 0, found.use.z).applyMatrix4(campus.camera.matrixWorldInverse);
       arrow.firstElementChild.style.transform = `rotate(${Math.atan2(v.x, -v.z)}rad)`;
     }
-  } else {
-    $("guide-sub").textContent = step.sub; dist.textContent = "";
-    arrow.classList.add("none");
-  }
+  } else arrow.classList.add("none");
+  setText($("guide-label"), label); setText($("guide-sub"), sub); setText($("guide-dist"), "");
+  const said = step.title + ". " + sub;
+  if (said !== lastAnnounced) { lastAnnounced = said; setText($("guide-sr"), said); }
   document.querySelector('[data-open="portal"]').classList.toggle("attn", step.open === "portal");
   document.querySelector('[data-open="life"]').classList.toggle("attn", step.open === "life");
 }
@@ -162,17 +186,18 @@ function renderPortal() {
     return;
   }
   const done1 = s.studyBank >= RULES.studyPerExam, done2 = s.lectureBank >= RULES.lecturesPerExam;
+  const avgPct = s.scores.length ? Math.round(s.scores.reduce((a, b) => a + b, 0) / s.scores.length) : 0;
   const nowStep = s.canGraduate ? 5 : !done1 ? 1 : !done2 ? 2 : 3;
   const st = (n, title, desc, btn) => `<div class="step${nowStep > n ? " done" : ""}${nowStep === n ? " now" : ""}"><span class="n">${nowStep > n ? "✓" : (n === 5 ? 4 : n)}</span><div class="t"><b>${title}</b><span>${desc}</span></div>${btn || ""}</div>`;
   body.innerHTML =
     `<div class="tiles"><div class="tile"><small>CGPA</small><b>${s.cgpa}</b></div><div class="tile"><small>Credits</small><b>${s.credits}/${RULES.creditsToGraduate}</b></div><div class="tile"><small>Exams passed</small><b>${s.passed}/${RULES.examsToGraduate}</b></div></div>` +
     `<div class="bar-l"><span>${esc(s.programme.name)}</span><span>${s.percent}%</span></div><div class="bar"><i style="width:${s.percent}%"></i></div>` +
-    `<div class="sheet-h">What to do next</div>` +
+    `<div class="sheet-h">${s.canGraduate ? "You are ready to graduate" : `Exam ${Math.min(s.passed + 1, RULES.examsToGraduate)} of ${RULES.examsToGraduate} · what to do next`}</div>` +
     st(1, "Study at the Library", `${Math.min(s.studyBank, RULES.studyPerExam)}/${RULES.studyPerExam} sessions ready. Walk to the library and use the study spot.`, !done1 ? `<button class="btn-sm alt" data-act="where">Show me</button>` : "") +
     st(2, "Attend a lecture", `${Math.min(s.lectureBank, RULES.lecturesPerExam)}/${RULES.lecturesPerExam} ready. Visit any faculty building.`, done1 && !done2 ? `<button class="btn-sm alt" data-act="where">Show me</button>` : "") +
     st(3, "Take an exam", `Uses ${RULES.studyPerExam} study + ${RULES.lecturesPerExam} lecture. Pass mark ${RULES.passMark}% for +${RULES.creditsPerPass} credits.`, `<button class="btn-sm" data-act="exam"${s.examReady && s.credits < RULES.creditsToGraduate ? "" : " disabled"}>Take exam</button>`) +
     st(5, "Graduate", `Needs ${RULES.creditsToGraduate} credits and ${RULES.examsToGraduate} passed exams.`, `<button class="btn-sm" data-act="graduate"${s.canGraduate ? "" : " disabled"}>Graduate</button>`) +
-    `<div class="sheet-h">Extra</div><div class="step"><span class="n">★</span><div class="t"><b>Scholarship ${money(RULES.scholarshipAward)}</b><span>${RULES.scholarshipPasses} passed exams, ${RULES.scholarshipStudy} study sessions, ${RULES.scholarshipAverage}% average.${s.scholarship ? " Awarded." : ""}</span></div><button class="btn-sm" data-act="scholarship"${s.scholarship ? " disabled" : ""}>Apply</button></div>` +
+    `<div class="sheet-h">Extra</div><div class="step"><span class="n">★</span><div class="t"><b>Scholarship ${money(RULES.scholarshipAward)}</b><span>Needs ${RULES.scholarshipPasses} passed exams (you have ${s.passed}), ${RULES.scholarshipStudy} study sessions (you have ${s.study}) and a ${RULES.scholarshipAverage}% average (yours: ${avgPct}%).${s.scholarship ? " Awarded." : ""}</span></div><button class="btn-sm" data-act="scholarship"${s.scholarship ? " disabled" : ""}>Apply</button></div>` +
     (s.graduations.length ? `<div class="sheet-h">Your records</div>` + s.graduations.map(g => `<div class="record">🎓 ${esc(g.name)} · CGPA ${esc(g.cgpa)}</div>`).join("") : "");
 }
 
@@ -182,13 +207,22 @@ const LIFE_ACTS = [
   ["work", "Student job", "+₦1,800 · −15 energy"], ["party", "Campus party", "Mood up · −12 energy"],
   ["discipline", "Conduct meeting", "+8 discipline"]
 ];
+function refreshLifeButtons() {
+  document.querySelectorAll("#life-body [data-life]").forEach(b => {
+    const a = CampusLife.availability(b.dataset.life), sub = b.querySelector(".h-tile-s");
+    b.disabled = !a.ok; b.setAttribute("aria-disabled", String(!a.ok));
+    setText(sub, a.ok ? b.dataset.sub : a.reason);
+  });
+}
 function renderLife() {
+  const sheet = document.querySelector("#sheet-life .h-sheet"), keep = isOpen("life");
+  const prevScroll = keep && sheet ? sheet.scrollTop : 0, prevDraft = keep ? ($("chat-input")?.value || "") : "";
   const s = CampusLife.snapshot(), body = $("life-body");
   const stat = (l, v) => `<div class="tile"><small>${l}</small><b>${v}</b></div>`;
   body.innerHTML =
     `<div id="chat-wrap"></div>` +
     `<div class="tiles">${stat("Energy", s.energy + "%")}${stat("Mood", s.mood + "%")}${stat("Reputation", s.reputation)}${stat("Discipline", s.discipline)}${stat("Wallet", money(s.wallet))}${stat("Besties", s.bestieCount)}</div>` +
-    `<div class="sheet-h">Do something</div><div class="acts">${LIFE_ACTS.map(([id, label, sub]) => `<button class="h-tile" data-life="${id}"><span class="h-tile-l">${label}</span><span class="h-tile-s">${sub}</span></button>`).join("")}</div>` +
+    `<div class="sheet-h">Do something</div><div class="acts">${LIFE_ACTS.map(([id, label, sub]) => `<button class="h-tile" data-life="${id}" data-sub="${esc(sub)}"><span class="h-tile-l">${label}</span><span class="h-tile-s">${sub}</span></button>`).join("")}</div>` +
     `<p class="note">Studying and lectures happen at the library and faculty buildings. Eat at the cafeteria, rest at the hostel.</p>` +
     `<div class="sheet-h">Join a group</div>` + CampusLife.factions.map(f => `<button class="fac${s.faction === f.id ? " on" : ""}" data-faction="${f.id}"><b>${esc(f.name)}${s.faction === f.id ? " · member" : ""}</b><small>${esc(f.desc)}</small></button>`).join("") +
     (s.faction ? `<button class="btn-ghost" data-leave type="button">Leave ${esc(s.factionInfo?.name || "group")}</button>` : "") +
@@ -198,10 +232,13 @@ function renderLife() {
     $("chat-wrap").innerHTML =
       `<div class="sheet-h" style="margin-top:4px">${esc(r.name)}${r.bestie ? " · bestie" : ""} <span style="font-weight:600">· friendship ${r.rapport}%</span></div>` +
       `<div class="chat" id="chat-log"></div><div class="chat-opts" id="chat-opts"></div>` +
-      `<form class="chat-compose" id="chat-form"><input id="chat-input" maxlength="180" autocomplete="off" placeholder="Type a message…"><button class="btn-sm" type="submit">Send</button></form>` +
+      `<form class="chat-compose" id="chat-form"><input id="chat-input" maxlength="180" autocomplete="off" placeholder="Type a message…"><button class="btn-sm" type="submit" id="chat-send" disabled>Send</button></form>` +
       `<div class="acts" style="margin-top:10px"><button class="h-tile" data-social="study"><span class="h-tile-l">Study together</span><span class="h-tile-s">Counts as a study session</span></button><button class="h-tile" data-social="bestie"><span class="h-tile-l">Ask to be besties</span><span class="h-tile-s">Needs 3 chats</span></button></div>`;
     renderConversation();
+    if (prevDraft && $("chat-input")) { $("chat-input").value = prevDraft; $("chat-send").disabled = !prevDraft.trim(); }
   }
+  if (sheet && prevScroll) sheet.scrollTop = prevScroll;
+  refreshLifeButtons();
 }
 function renderConversation() {
   const log = $("chat-log"), opts = $("chat-opts"); if (!log || !opts) return;
@@ -233,7 +270,10 @@ function chooseTopic(label){
 }
 
 function openLife(npc = null) {
-  if (npc) { activeNpc = npc; conversation = null; startConversation(npc, "intro"); }
+  if (npc) {
+    const key = CampusLife.person(npc).key; activeNpc = npc;
+    if (!conversation || conversation.key !== key) { conversation = null; startConversation(npc, "intro"); }
+  }
   openPanel("life");
 }
 
@@ -264,7 +304,9 @@ function doCampusActivity(id, title) {
 }
 
 /* ---------- clothing market ---------- */
-const CLOTHING_KEY="ghegeh_clothing_owned_v1";
+const CLOTHING_KEY="ghegeh_clothing_owned_v1", WORN_KEY="ghegeh_clothing_worn_v1";
+const getWorn=()=>{try{return localStorage.getItem(WORN_KEY)||""}catch{return ""}};
+const setWorn=id=>{try{localStorage.setItem(WORN_KEY,id)}catch{}};
 const CLOTHING_STOCK=[
   {id:"hoodie-blue",name:"Campus Signature Hoodie",category:"TOP",price:6800,color:"#176a9b",look:{topStyle:"hoodie",topColor:"#176a9b",topPattern:"solid",topAccent:"#e8f5ff"}},
   {id:"ankara-shirt",name:"Ankara Streetwear Shirt",category:"TOP",price:5400,color:"#a12e4b",look:{topStyle:"dashiki",topColor:"#a12e4b",topPattern:"ankara",topAccent:"#e7bf53"}},
@@ -282,8 +324,11 @@ function renderMarket() {
   const owned = ownedClothes(), wallet = CampusLife.snapshot().wallet;
   $("market-wallet").textContent = `Wallet ${money(wallet)}`;
   $("market-items").innerHTML = CLOTHING_STOCK.map(item => {
-    const has = owned.includes(item.id);
-    return `<div class="market-item"><div class="sw" style="background:linear-gradient(135deg,${item.color},#0b1018 90%)"></div><b>${esc(item.name)}</b><small>${esc(item.category)} · ${money(item.price)}</small><button class="btn-sm${has ? " alt" : ""}" data-clothing="${esc(item.id)}">${has ? "Wear" : "Buy"}</button></div>`;
+    const has = owned.includes(item.id), worn = getWorn() === item.id, short = item.price - wallet;
+    const btn = has
+      ? (worn ? `<button class="btn-sm alt" disabled>Worn</button>` : `<button class="btn-sm alt" data-clothing="${esc(item.id)}">Wear</button>`)
+      : (short > 0 ? `<button class="btn-sm" disabled>Need ${money(short)} more</button>` : `<button class="btn-sm" data-clothing="${esc(item.id)}">Buy</button>`);
+    return `<div class="market-item"><div class="sw" style="background:linear-gradient(135deg,${item.color},#0b1018 90%)"></div><b>${esc(item.name)}</b><small>${esc(item.category)} · ${money(item.price)}</small>${btn}</div>`;
   }).join("");
 }
 
@@ -291,11 +336,14 @@ function renderMarket() {
 function renderSettings() {
   document.querySelectorAll("[data-quality]").forEach(b => b.classList.toggle("is-on", b.dataset.quality === GameQuality.level));
 }
-function resetEverything() {
-  if (!window.confirm("Start a brand-new student? This erases your profile, grades, wallet, friends and purchases on this device.")) return;
+function doReset() {
   CampusProgress.reset(); CampusLife.reset(); StudentProfile.clear();
-  try { localStorage.removeItem(CLOTHING_KEY); localStorage.removeItem(HOWTO_KEY); } catch {}
+  try { localStorage.removeItem(CLOTHING_KEY); localStorage.removeItem(WORN_KEY); localStorage.removeItem(HOWTO_KEY); } catch {}
   location.reload();
+}
+function resetEverything() {
+  showDialog({ title: "Start a new student?", text: "This erases your profile, grades, wallet, friends and purchases on this device. It cannot be undone.",
+    actions: [{ label: "Erase and start over", primary: true, danger: true, fn: doReset }, { label: "Cancel" }] });
 }
 
 /* ---------- registration ---------- */
@@ -310,24 +358,34 @@ function setupRegister() {
     $("reg-go").textContent = `Continue as ${saved.name}`; $("reg-new").classList.remove("hidden");
   }
   const note = $("reg-note");
-  function check() {
-    const raw = $("f-jamb").value.trim(), jamb = Number(raw);
-    for (const o of sel.options) { const p = CampusProgress.programmes.find(x => x.id === o.value); o.disabled = raw !== "" && jamb < p.minJamb; }
-    if (sel.selectedOptions[0]?.disabled) { const ok = [...sel.options].find(o => !o.disabled); if (ok) sel.value = ok.value; }
+  const mark = (el, bad) => { if (bad) el.setAttribute("aria-invalid", "true"); else el.removeAttribute("aria-invalid"); };
+  function check(final = false) {
+    const jEl = $("f-jamb"), raw = jEl.value.trim(), jamb = Number(raw);
+    const partial = !final && raw !== "" && raw.length < 3 && jamb < MIN_JAMB;
+    const prev = CampusProgress.programmes.find(x => x.id === sel.value);
+    for (const o of sel.options) { const p = CampusProgress.programmes.find(x => x.id === o.value); o.disabled = !partial && raw !== "" && jamb < p.minJamb; }
+    let swap = "";
+    if (!partial && sel.selectedOptions[0]?.disabled) {
+      const ok = [...sel.options].find(o => !o.disabled);
+      if (ok) { sel.value = ok.value; const now = CampusProgress.programmes.find(x => x.id === ok.value); swap = `${prev.name} needs a higher score, so we picked ${now.name}. `; }
+    }
     const p = CampusProgress.programmes.find(x => x.id === sel.value);
+    mark(jEl, false);
     if (raw === "") { note.className = "reg-note"; note.textContent = "Enter your JAMB score to see the courses you can apply for."; return false; }
-    if (!Number.isFinite(jamb) || jamb < 0 || jamb > 400) { note.className = "reg-note bad"; note.textContent = "JAMB score must be between 0 and 400."; return false; }
-    if (jamb < MIN_JAMB) { note.className = "reg-note bad"; note.textContent = `No course here accepts a score below ${MIN_JAMB}.`; return false; }
-    note.className = "reg-note ok"; note.textContent = `Your score meets the cut-off for ${p.name} (${p.minJamb}).`; return true;
+    if (partial) { note.className = "reg-note"; note.textContent = "Keep typing your 3-digit JAMB score…"; return false; }
+    if (!Number.isFinite(jamb) || jamb < 0 || jamb > 400) { mark(jEl, true); note.className = "reg-note bad"; note.textContent = "JAMB score must be between 0 and 400."; return false; }
+    if (jamb < MIN_JAMB) { mark(jEl, true); note.className = "reg-note bad"; note.textContent = `No course here accepts a score below ${MIN_JAMB}.`; return false; }
+    note.className = "reg-note ok"; note.textContent = `${swap}Your score meets the cut-off for ${p.name} (${p.minJamb}).`; return true;
   }
-  $("f-jamb").addEventListener("input", check); sel.addEventListener("change", check); check();
+  $("f-jamb").addEventListener("input", () => check()); $("f-jamb").addEventListener("blur", () => check(true)); sel.addEventListener("change", () => check()); check();
   $("reg-new").addEventListener("click", resetEverything);
   $("profile-form").addEventListener("submit", e => {
     e.preventDefault();
     const name = $("f-name").value.replace(/\s+/g, " ").trim(), age = Number($("f-age").value);
-    if (!name) { note.className = "reg-note bad"; note.textContent = "Please enter your name."; $("f-name").focus(); return; }
-    if (!Number.isFinite(age) || age < 15 || age > 60) { note.className = "reg-note bad"; note.textContent = "Age must be between 15 and 60."; $("f-age").focus(); return; }
-    if (!check()) { $("f-jamb").focus(); return; }
+    $("f-name").removeAttribute("aria-invalid"); $("f-age").removeAttribute("aria-invalid");
+    if (!name) { $("f-name").setAttribute("aria-invalid", "true"); note.className = "reg-note bad"; note.textContent = "Please enter your name."; $("f-name").focus(); return; }
+    if (!Number.isFinite(age) || age < 15 || age > 60) { note.className = "reg-note bad"; note.textContent = "Age must be between 15 and 60."; $("f-age").setAttribute("aria-invalid", "true"); $("f-age").focus(); return; }
+    if (!check(true)) { $("f-jamb").focus(); return; }
     const prog = CampusProgress.programmes.find(x => x.id === sel.value);
     const prev = StudentProfile.get();
     StudentProfile.save({ name, age, jamb: Number($("f-jamb").value), course: prog.name, programme: prog.id, aim: prev?.aim || "", iq: prev?.iq ?? 100 });
@@ -371,15 +429,36 @@ function bindUI() {
       if (CampusLife.suspended()) { toast("You are suspended. Attend a conduct meeting first."); return; }
       if (!CampusProgress.snapshot().examReady) { toast(CampusProgress.activity("exam").message); return; }
       const gate = CampusLife.activity("exam"); if (!gate.ok) { toast(gate.message); return; }
-      const r = CampusProgress.activity("exam"); toast(r.message); renderPortal(); renderStatus(); return;
+      const r = CampusProgress.activity("exam"), snap = CampusProgress.snapshot(); renderStatus();
+      showDialog({ title: r.passed ? "Exam passed" : "Exam failed", big: `${r.score}%`, tone: r.passed ? "ok" : "bad",
+        text: r.passed ? `${r.message} You now have ${snap.credits}/${RULES.creditsToGraduate} credits and ${snap.passed}/${RULES.examsToGraduate} exams passed.` : r.message,
+        actions: [{ label: "Back to portal", primary: true, fn: () => openPanel("portal") }] });
+      return;
     }
-    const r = act === "graduate" ? CampusProgress.graduate() : CampusProgress.activity(act);
+    if (act === "graduate") {
+      const sn = CampusProgress.snapshot(); if (!sn.canGraduate || !sn.programme) { toast("You are not ready to graduate yet."); return; }
+      showDialog({ title: "Graduate now?", text: `You will complete ${sn.programme.name} with a CGPA of ${sn.cgpa}. Your study progress resets and you can enrol in a new programme.`,
+        actions: [{ label: "Graduate", primary: true, fn: () => { const g = CampusProgress.graduate(); renderStatus();
+          showDialog({ title: "Congratulations!", big: "🎓", tone: "ok", text: g.message, actions: [{ label: "Continue", primary: true, fn: () => openPanel("portal") }] }); } },
+          { label: "Not yet", fn: () => openPanel("portal") }] });
+      return;
+    }
+    const r = CampusProgress.activity(act);
     if (r.ok && r.award) CampusLife.award(r.award, "Scholarship");
     toast(r.message); renderPortal(); renderStatus();
   });
 
   $("life-body").addEventListener("click", e => {
-    const f = e.target.closest("[data-faction]"); if (f) { toast(CampusLife.joinFaction(f.dataset.faction).message); renderLife(); renderStatus(); return; }
+    const f = e.target.closest("[data-faction]");
+    if (f) {
+      const id = f.dataset.faction;
+      if (id === "secret-cult" && CampusLife.snapshot().faction !== id) {
+        showDialog({ title: "Join the Secret Cult?", text: "This fictional group costs 18 conduct points straight away and can get you suspended from class.",
+          actions: [{ label: "Join anyway", primary: true, danger: true, fn: () => { toast(CampusLife.joinFaction(id).message); openPanel("life"); renderStatus(); } }, { label: "Cancel", fn: () => openPanel("life") }] });
+        return;
+      }
+      toast(CampusLife.joinFaction(id).message); renderLife(); renderStatus(); return;
+    }
     if (e.target.closest("[data-leave]")) { toast(CampusLife.leaveFaction().message); renderLife(); renderStatus(); return; }
     const t = e.target.closest("[data-topic]"); if (t && conversation) { chooseTopic(conversation.options[Number(t.dataset.topic)]); return; }
     const so = e.target.closest("[data-social]");
@@ -392,29 +471,34 @@ function bindUI() {
     const a = e.target.closest("[data-life]");
     if (a) { toast(CampusLife.activity(a.dataset.life).message); renderLife(); renderStatus(); }
   });
+  $("life-body").addEventListener("input", e => { if (e.target.id === "chat-input") $("chat-send").disabled = !e.target.value.trim(); });
+  setInterval(() => { if (isOpen("life")) refreshLifeButtons(); }, 1000);
   $("life-body").addEventListener("submit", e => {
     if (e.target.id !== "chat-form") return; e.preventDefault();
     const input = $("chat-input"), message = input.value.trim();
     if (!activeNpc || !conversation || !message) return;
     conversation.lines.push({ who: "player", text: message });
     const r = CampusLife.respond(activeNpc, message); conversation.lines.push({ who: "npc", text: r.line }); conversation.options = r.options;
-    input.value = ""; renderConversation(); input.focus();
+    input.value = ""; $("chat-send").disabled = true; renderConversation(); input.focus();
   });
 
   $("market-items").addEventListener("click", e => {
     const b = e.target.closest("[data-clothing]"); if (!b) return;
     const item = CLOTHING_STOCK.find(x => x.id === b.dataset.clothing); if (!item) return;
     const owned = ownedClothes();
-    if (owned.includes(item.id)) { campus?.equipClothing(item.look); toast(`Now wearing ${item.name}.`); return; }
+    if (owned.includes(item.id)) { campus?.equipClothing(item.look); setWorn(item.id); renderMarket(); toast(`Now wearing ${item.name}.`); return; }
     const r = CampusLife.purchase(item.price, item.name); if (!r.ok) { toast(r.message); return; }
-    owned.push(item.id); saveOwned(owned); renderMarket(); renderStatus(); toast(r.message + " Tap Wear to put it on."); campus?.equipClothing(item.look);
+    owned.push(item.id); saveOwned(owned); setWorn(item.id); campus?.equipClothing(item.look); renderMarket(); renderStatus(); toast(r.message + " You are now wearing it.");
   });
   $("open-fitting").addEventListener("click", () => { closePanel("market"); if (campus?.openWardrobe) campus.openWardrobe(); else toast("The fitting room is still loading."); });
 
   $("emote-grid").addEventListener("click", e => { const b = e.target.closest("[data-emote]"); if (!b) return; closePanel("emotes"); if (campus?.playEmote) campus.playEmote(b.dataset.emote); else toast("Your character is getting ready."); });
+  $("do-hug").addEventListener("click", () => { closePanel("emotes"); if (campus?.hug) campus.hug(); else toast("Stand next to a student first."); });
   $("do-handshake").addEventListener("click", () => { closePanel("emotes"); if (campus?.handshake) campus.handshake(); else toast("Stand next to a student first."); });
 
-  document.querySelectorAll("[data-quality]").forEach(b => b.addEventListener("click", () => { GameQuality.set(b.dataset.quality, renderer); renderSettings(); toast(`Graphics set to ${GameQuality.level}. Reload for the full effect.`); }));
+  document.querySelectorAll("[data-quality]").forEach(b => b.addEventListener("click", () => { GameQuality.set(b.dataset.quality, renderer); renderSettings(); toast(`Graphics set to ${GameQuality.level}.`); $("reload-quality").classList.remove("hidden"); }));
+  $("reload-quality").addEventListener("click", () => location.reload());
+  $("update-reload").addEventListener("click", () => location.reload());
   $("open-howto").addEventListener("click", () => openPanel("howto"));
   $("reset-btn").addEventListener("click", resetEverything);
   $("reload-btn").addEventListener("click", () => location.reload());
@@ -423,8 +507,23 @@ function bindUI() {
   window.addEventListener("keydown", e => { if (e.code === "ShiftLeft" || e.code === "ShiftRight") setTimeout(syncRun, 0); });
 
   window.addEventListener("keydown", e => {
-    if (e.key !== "Escape") return;
-    const top = [...PANELS].reverse().find(isOpen); if (top) closePanel(top);
+    const top = [...PANELS].reverse().find(isOpen);
+    if (e.key === "Escape") { if (top) closePanel(top); return; }
+    if (e.key === "Tab" && top) {
+      const f = [...sheetEl(top).querySelectorAll("button:not([disabled]),input:not([disabled]),select,[tabindex='0']")].filter(x => x.offsetParent !== null);
+      if (!f.length) { e.preventDefault(); return; }
+      const first = f[0], last = f[f.length - 1], a = document.activeElement;
+      if (e.shiftKey && (a === first || !sheetEl(top).contains(a))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (a === last || !sheetEl(top).contains(a))) { e.preventDefault(); first.focus(); }
+    }
+  });
+  /* swipe a sheet down by its handle or header to close it */
+  document.querySelectorAll("[data-sheet] .h-sheet").forEach(sheet => {
+    let y0 = null, dy = 0;
+    sheet.addEventListener("pointerdown", e => { if (!e.target.closest(".h-grab,.h-head") || e.target.closest(".h-x")) return; y0 = e.clientY; dy = 0; sheet.style.transition = "none"; try { sheet.setPointerCapture(e.pointerId); } catch {} });
+    sheet.addEventListener("pointermove", e => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); sheet.style.transform = `translateY(${dy}px)`; });
+    const end = () => { if (y0 == null) return; y0 = null; sheet.style.transition = ""; sheet.style.transform = ""; if (dy > 90) closePanel(sheet.parentElement.id.replace("sheet-", "")); };
+    sheet.addEventListener("pointerup", end); sheet.addEventListener("pointercancel", end);
   });
   document.addEventListener("visibilitychange", () => { hiddenTab = document.hidden; previous = performance.now(); });
   window.addEventListener("resize", () => { renderer?.setSize(window.innerWidth, window.innerHeight); if (campus?.camera) { campus.camera.aspect = window.innerWidth / window.innerHeight; campus.camera.updateProjectionMatrix(); } });
@@ -434,7 +533,7 @@ function bindUI() {
 
 const router = {
   renderer, cinematic: false, go: () => {}, back: () => {},
-  onNpcInteract(npc) { const r = CampusLife.talk(npc); toast(`You greeted ${r.name}.`); openLife(npc); },
+  onNpcInteract(npc) { CampusLife.talk(npc); openLife(npc); },
   onCampusActivity(id, title) { doCampusActivity(id, title); },
   onOpenMarket() { openPanel("market"); }
 };
@@ -461,7 +560,7 @@ async function start() {
 }
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").then(reg => {
-    reg.addEventListener("updatefound", () => { const w = reg.installing; w?.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) toast("A new version is ready. Reload to update."); }); });
+    reg.addEventListener("updatefound", () => { const w = reg.installing; w?.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) $("update-bar").classList.remove("hidden"); }); });
   }).catch(() => {}));
 }
 start();

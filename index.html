@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b110e">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Ghegeh University: a 3D third-person campus life game by Clinton Tech.">
@@ -69,8 +69,10 @@
   <script>
   (function(){var el=document.getElementById("ct-splash");if(!el)return;
   var fill=document.getElementById("ct-fill"),pct=document.getElementById("ct-pct");
-  var t0=Date.now(),MIN=3000,MAX=14000,done=false,p=0;
-  function hide(){if(done)return;done=true;el.classList.add("out");window.__ghegehSplashDone=true;
+  var seen=false;try{seen=localStorage.getItem("ghegeh_splash_seen")==="1"}catch(e){}
+  var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches;
+  var t0=Date.now(),MIN=reduce?600:(seen?1500:3000),MAX=14000,done=false,p=0;
+  function hide(){if(done)return;done=true;try{localStorage.setItem("ghegeh_splash_seen","1")}catch(e){}el.classList.add("out");window.__ghegehSplashDone=true;
     document.dispatchEvent(new Event("ghegeh:splash-done"));
     setTimeout(function(){el.remove();var c=document.getElementById("ct-splash-css");if(c)c.remove()},700)}
   function render(){fill.style.width=p+"%";pct.textContent=Math.min(100,Math.floor(p))+"%"}
@@ -95,10 +97,10 @@
           <span class="reg-crest">GU</span>
           <div><h1 id="reg-title">Ghegeh University</h1><p>New student registration</p></div>
         </header>
-        <label class="field"><span>Full name</span><input name="name" id="f-name" required maxlength="32" placeholder="e.g. Chidi Okafor" autocomplete="off" autocapitalize="words"></label>
+        <label class="field"><span>Full name</span><input name="name" id="f-name" aria-describedby="reg-note" required maxlength="32" placeholder="e.g. Chidi Okafor" autocomplete="off" autocapitalize="words"></label>
         <div class="field-row">
-          <label class="field"><span>Age</span><input name="age" id="f-age" required type="number" inputmode="numeric" min="15" max="60" value="18"></label>
-          <label class="field"><span>JAMB score <em>/400</em></span><input name="jamb" id="f-jamb" required type="number" inputmode="numeric" min="0" max="400" placeholder="e.g. 230"></label>
+          <label class="field"><span>Age</span><input name="age" aria-describedby="reg-note" id="f-age" required type="number" inputmode="numeric" min="15" max="60" value="18"></label>
+          <label class="field"><span>JAMB score <em>/400</em></span><input name="jamb" id="f-jamb" aria-describedby="reg-note" required type="number" inputmode="numeric" min="0" max="400" placeholder="e.g. 230"></label>
         </div>
         <label class="field"><span>Course</span><select name="programme" id="f-course" required></select></label>
         <p class="reg-note" id="reg-note" role="status"></p>
@@ -119,17 +121,19 @@
             <div class="pp-m pp-m-en"><span class="pp-m-l">ENERGY</span><div class="pp-m-bar"><i id="m-en"></i></div><span class="pp-m-n" id="n-en">0</span></div>
             <div class="pp-m pp-m-mood"><span class="pp-m-l">MOOD</span><div class="pp-m-bar"><i id="m-mood"></i></div><span class="pp-m-n" id="n-mood">0</span></div>
             <div class="pp-m pp-m-rep"><span class="pp-m-l">REP</span><div class="pp-m-bar"><i id="m-rep"></i></div><span class="pp-m-n" id="n-rep">0</span></div>
+            <div class="pp-m pp-m-disc"><span class="pp-m-l">CONDUCT</span><div class="pp-m-bar"><i id="m-disc"></i></div><span class="pp-m-n" id="n-disc">0</span></div>
           </div>
         </div>
       </div>
     </div>
 
-    <button class="guide hidden" id="guide" type="button" aria-live="polite">
+    <button class="guide hidden" id="guide" type="button">
       <span class="guide-arrow" id="guide-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 20l7-4 7 4z"/></svg></span>
       <span class="guide-text"><small id="guide-label">NEXT STEP</small><b id="guide-title">Welcome</b><em id="guide-sub"></em></span>
       <span class="guide-dist" id="guide-dist"></span>
     </button>
-    <div class="suspension-banner hidden" id="suspension-banner" role="alert">You are suspended from class. Open Campus Life and attend a conduct meeting.</div>
+    <span class="sr-only" id="guide-sr" role="status" aria-live="polite"></span>
+    <div class="suspension-banner hidden" id="suspension-banner" role="alert">You are suspended from class. Open People and attend a conduct meeting.</div>
 
     <nav class="dock hidden" id="dock" aria-label="Menus">
       <button data-open="portal" aria-label="Student portal"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg><span>Student</span></button>
@@ -142,7 +146,7 @@
 
     <!-- ===== Sheets (same look as the Everyday-game menu sheet) ===== -->
     <div class="h-scrim hidden" id="sheet-portal" data-sheet>
-      <div class="h-sheet" role="dialog" aria-labelledby="portal-title">
+      <div class="h-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="portal-title">
         <div class="h-grab"></div>
         <div class="h-head"><div><div class="h-title" id="portal-title">Student Portal</div><div class="h-sub" id="profile-summary"></div></div><button class="h-x" data-close aria-label="Close"></button></div>
         <div id="portal-body"></div>
@@ -150,15 +154,15 @@
     </div>
 
     <div class="h-scrim hidden" id="sheet-life" data-sheet>
-      <div class="h-sheet" role="dialog" aria-labelledby="life-title">
+      <div class="h-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="life-title">
         <div class="h-grab"></div>
-        <div class="h-head"><div><div class="h-title" id="life-title">Campus Life</div><div class="h-sub">Friends, clubs and how you spend your time</div></div><button class="h-x" data-close aria-label="Close"></button></div>
+        <div class="h-head"><div><div class="h-title" id="life-title">People</div><div class="h-sub">Friends, clubs and campus life</div></div><button class="h-x" data-close aria-label="Close"></button></div>
         <div id="life-body"></div>
       </div>
     </div>
 
     <div class="h-scrim hidden" id="sheet-market" data-sheet>
-      <div class="h-sheet" role="dialog" aria-labelledby="market-title">
+      <div class="h-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="market-title">
         <div class="h-grab"></div>
         <div class="h-head"><div><div class="h-title" id="market-title">Clothing Market</div><div class="h-sub" id="market-wallet"></div></div><button class="h-x" data-close aria-label="Close"></button></div>
         <div class="h-grid c2" id="market-items"></div>
@@ -167,7 +171,7 @@
     </div>
 
     <div class="h-scrim hidden" id="sheet-emotes" data-sheet>
-      <div class="h-sheet" role="dialog" aria-labelledby="emote-title">
+      <div class="h-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="emote-title">
         <div class="h-grab"></div>
         <div class="h-head"><div><div class="h-title" id="emote-title">Emotes</div><div class="h-sub">Tap one to play it on your character</div></div><button class="h-x" data-close aria-label="Close"></button></div>
         <div class="h-grid c4" id="emote-grid">
@@ -185,19 +189,21 @@
           <button class="h-tile" data-emote="stepper_heeltoe"><span class="h-tile-l">Heel-toe</span></button>
         </div>
         <button class="btn-ghost" id="do-handshake" type="button">Shake hands with the nearest student</button>
+        <button class="btn-ghost" id="do-hug" type="button">Hug the nearest student</button>
       </div>
     </div>
 
     <div class="h-scrim hidden" id="sheet-settings" data-sheet>
-      <div class="h-sheet" role="dialog" aria-labelledby="settings-title">
+      <div class="h-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="settings-title">
         <div class="h-grab"></div>
-        <div class="h-head"><div><div class="h-title" id="settings-title">Menu</div><div class="h-sub">Ghegeh University · Clinton Tech</div></div><button class="h-x" data-close aria-label="Close"></button></div>
+        <div class="h-head"><div><div class="h-title" id="settings-title">Settings</div><div class="h-sub">Ghegeh University · Clinton Tech</div></div><button class="h-x" data-close aria-label="Close"></button></div>
         <div class="h-sec"><div class="h-sec-l">Graphics (use LOW if the game is slow)</div>
           <div class="h-grid c3" id="quality-grid">
             <button class="h-tile" data-quality="low"><span class="h-tile-l">Low</span></button>
             <button class="h-tile" data-quality="medium"><span class="h-tile-l">Medium</span></button>
             <button class="h-tile" data-quality="high"><span class="h-tile-l">High</span></button>
           </div></div>
+        <button class="btn-ghost hidden" id="reload-quality" type="button">Reload to apply graphics</button>
         <div class="h-sec"><div class="h-grid c2">
           <button class="h-tile" id="open-howto" type="button"><span class="h-tile-l">How to play</span><span class="h-tile-s">Controls and goals</span></button>
           <button class="h-tile tone-flare" id="reset-btn" type="button"><span class="h-tile-l">New student</span><span class="h-tile-s">Erases this save</span></button>
@@ -206,7 +212,7 @@
     </div>
 
     <div class="h-scrim hidden" id="sheet-howto" data-sheet>
-      <div class="h-sheet" role="dialog" aria-labelledby="howto-title">
+      <div class="h-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="howto-title">
         <div class="h-grab"></div>
         <div class="h-head"><div><div class="h-title" id="howto-title">How to play</div><div class="h-sub">Your goal: get admitted, pass your exams, graduate</div></div><button class="h-x" data-close aria-label="Close"></button></div>
         <ol class="howto">
@@ -220,6 +226,14 @@
       </div>
     </div>
 
+    <div class="h-scrim hidden" id="sheet-dialog" data-sheet>
+      <div class="h-sheet" role="alertdialog" aria-modal="true" tabindex="-1" aria-labelledby="dialog-title" aria-describedby="dialog-text">
+        <div class="h-grab"></div>
+        <div class="dlg"><div class="dlg-title" id="dialog-title"></div><div class="dlg-big" id="dialog-big"></div><p class="dlg-text" id="dialog-text"></p><div class="dlg-actions" id="dialog-actions"></div></div>
+      </div>
+    </div>
+
+    <div class="update-bar hidden" id="update-bar" role="status"><span>A new version is ready.</span><button class="btn-sm" id="update-reload" type="button">Reload</button></div>
     <div class="toast" id="toast" role="status"></div>
     <div class="overlay hidden" id="loading" role="status" aria-live="polite">
       <div class="loader" id="loader"></div><b id="loading-title">Building your campus</b><small id="loading-copy">This takes a moment the first time.</small>

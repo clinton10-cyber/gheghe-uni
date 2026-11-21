@@ -105,6 +105,15 @@ export const CampusLife={
     s.faction=null;s.factionBonus={rep:0};save(s);
     return {ok:true,message:`You left ${f?.name||"the group"}. Its reputation bonus no longer applies.`};
   },
+  availability(type){
+    const c=COSTS[type],s=load(),now=Date.now();
+    if(!c)return {ok:false,reason:"Unavailable"};
+    const until=(s.cooldowns[type]||0)+c.cd;
+    if(now<until)return {ok:false,reason:`Ready in ${wait(until-now)}`};
+    if(s.energy<c.e)return {ok:false,reason:"Too tired"};
+    if(type==="discipline"&&s.discipline>=100)return {ok:false,reason:"Record is spotless"};
+    return {ok:true};
+  },
   activity(type){
     const c=COSTS[type],s=load(),now=Date.now();
     if(!c)return {ok:false,message:"Unknown activity."};
