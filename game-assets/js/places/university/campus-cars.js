@@ -37,6 +37,7 @@ export function makeCar(modelIndex, colorIndex) {
   scl.position.set(-(b.min.x + b.max.x) / 2, -b.min.y + 0.02, -(b.min.z + b.max.z) / 2);   // centred, wheels on the ground
   const group = new THREE.Group(); group.add(scl);
   group.userData.size = { w: b.max.x - b.min.x, l: b.max.z - b.min.z };
+  group.userData.doors = model.userData && model.userData.doors ? model.userData.doors : null;   // only the Range Rover ships real hinged doors
   return group;
 }
 
@@ -72,11 +73,12 @@ export function createParkingTraffic({ scene, colliders, bays, lot, arrivals, on
     else pts.push([bx - 3.0, aisleZ + 0.3], [bx - 1.0, 191.6], [bx, 192.7], [bx, bay.z]);
     const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(p[0], 0.06, p[1])), false, "centripetal");
     g.visible = false; scene.add(g);
-    cars.push({ group: g, state: "wait", delay: 2.5 + i * 15, dist: 0, curve, len: curve.getLength(), bay, spawned: false, hold: 0 });
+    cars.push({ group: g, state: "wait", delay: 2.5 + i * 15, dist: 0, curve, len: curve.getLength(), bay, spawned: false, hold: 0, doorV: 0, doorTarget: 0, closeIn: 0 });
   }
 
   const _t = new THREE.Vector3();
   function update(dt) {
+    animateDoors(dt);
     for (const c of cars) {
       if (c.state === "wait") {
         c.delay -= dt;
@@ -92,16 +94,30 @@ export function createParkingTraffic({ scene, colliders, bays, lot, arrivals, on
         c.group.rotation.y = c.dist >= c.len - 0.01 ? c.bay.yaw : Math.atan2(_t.x, _t.z);
         if (c.dist >= c.len - 0.01) {
           c.group.position.set(c.bay.x, 0.06, c.bay.z); c.group.rotation.y = c.bay.yaw;
-          c.state = "stopping"; c.hold = 1.4;
+          c.state = "stopping"; c.hold = 1.6;
           addCollider(c.group, c.bay); onCollidersChanged?.();
         }
       } else if (c.state === "stopping") {
         c.hold -= dt;
+        if (c.hold < 1.2) c.doorTarget = 1;                                   // driver's door swings open
         if (c.hold <= 0) {
-          c.state = "parked";
+          c.state = "parked"; c.closeIn = 2.2;
           const side = c.bay.row === "n" ? -1 : 1;                           // driver's side, between the cars
           onArrive?.(c, { x: c.bay.x + side * (lot.bayW / 2), z: c.bay.z + 0.4 });
         }
+      }
+    }
+  }
+  function animateDoors(dt) {
+    for (const c of cars) {
+      const doors = c.group.userData.doors;
+      if (!doors) continue;
+      if (c.closeIn > 0) { c.closeIn -= dt; if (c.closeIn <= 0) c.doorTarget = 0; }
+      const d = c.doorTarget - c.doorV;
+      if (Math.abs(d) < 0.001) continue;
+      c.doorV += Math.sign(d) * Math.min(Math.abs(d), dt * 1.8);
+      for (const door of doors) {
+        if (door.userData.isFront && door.userData.sign === 1) door.rotation.y = -0.65 * c.doorV;   // hinge is the door's front edge
       }
     }
   }
